@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compliance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--bg1:#111;--bg2:#1a1a1a;--bg3:#222;--bg4:#2a2a2a;
+  --border:#2e2e2e;--border2:#3a3a3a;
+  --text:#f0f0f0;--text2:#a0a0a0;--text3:#606060;
+  --pink:#ff3da6;--pink2:#ff6dbf;--pink-bg:rgba(255,61,166,.1);--pink-border:rgba(255,61,166,.25);
+  --yellow:#f5c518;--yellow2:#ffd84d;--yellow-bg:rgba(245,197,24,.1);--yellow-border:rgba(245,197,24,.25);
+  --green:#22c55e;--green-bg:rgba(34,197,94,.1);--green-border:rgba(34,197,94,.25);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-border:rgba(239,68,68,.25);
+  --amber:#f59e0b;--amber-bg:rgba(245,158,11,.1);
+  --rad:12px;--rads:7px;
+}
+body{font-family:Inter,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:1280px;margin:0 auto;padding:28px 24px}
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:22px;border-bottom:1px solid var(--border2)}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.logo{width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,var(--pink),var(--yellow));display:flex;align-items:center;justify-content:center;color:#000;font-size:20px;font-weight:700;box-shadow:0 0 24px rgba(255,61,166,.35)}
+.htitle{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.hsub{font-size:12px;color:var(--text3);margin-top:2px}
+.upload-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 20px;border-radius:var(--rads);border:none;background:linear-gradient(135deg,var(--pink),#c0368a);color:#fff;font-size:13px;font-family:inherit;cursor:pointer;font-weight:600;transition:all .2s;box-shadow:0 0 16px rgba(255,61,166,.3)}
+.upload-btn:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(255,61,166,.45)}
+#fi{display:none}
+.upload-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.upload-overlay.show{display:flex}
+.upload-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad);padding:32px;max-width:500px;width:90%;text-align:center}
+.upload-modal h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.upload-modal p{font-size:13px;color:var(--text2);margin-bottom:24px}
+.drop-zone{border:2px dashed var(--pink-border);border-radius:var(--rad);padding:40px 24px;cursor:pointer;transition:all .2s;background:var(--pink-bg);position:relative}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--pink);background:rgba(255,61,166,.15)}
+.dz-icon{font-size:40px;margin-bottom:12px}
+.dz-text{font-size:13px;color:var(--text2)}
+.dz-text strong{color:var(--pink)}
+.dz-hint{font-size:11px;color:var(--text3);margin-top:6px}
+.progress-bar{height:5px;background:var(--border);border-radius:3px;margin-top:18px;overflow:hidden;display:none}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--yellow));border-radius:3px;transition:width .3s;width:0}
+.parse-status{font-size:12px;margin-top:10px;display:none;min-height:18px;font-weight:500}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.btn-cancel{padding:8px 18px;border-radius:var(--rads);border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:13px;font-family:inherit;cursor:pointer}
+.btn-cancel:hover{background:var(--bg3)}
+.tabs{display:flex;gap:2px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rads);padding:4px;width:fit-content;margin-bottom:28px}
+.tab{padding:8px 20px;border-radius:5px;border:none;background:transparent;font-size:13px;font-family:inherit;cursor:pointer;color:var(--text3);font-weight:500;transition:all .15s}
+.tab.active{background:var(--bg4);color:var(--pink);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--rad);padding:20px 22px}
+.sl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--rad);padding:18px 20px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-pink::before{background:linear-gradient(90deg,var(--pink),var(--pink2))}
+.kpi-yellow::before{background:linear-gradient(90deg,var(--yellow),var(--yellow2))}
+.kpi-green::before{background:linear-gradient(90deg,var(--green),#4ade80)}
+.kpi-red::before{background:var(--red)}
+.kpi-label{font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:500}
+.kpi-value{font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:5px}
+.stat-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.stat-row:last-child{border-bottom:none}
+.stat-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.stat-label{flex:1;font-size:13px;color:var(--text2)}
+.stat-n{font-size:13px;font-weight:600;color:var(--text);min-width:24px;text-align:right}
+.stat-p{font-size:12px;color:var(--text3);min-width:38px;text-align:right}
+.stat-bar{width:72px;flex-shrink:0}
+.bar-track{background:var(--bg3);border-radius:3px;height:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.stat-total{display:flex;justify-content:flex-end;padding-top:10px;margin-top:2px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);font-weight:600}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.b-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.b-pink{background:var(--pink-bg);color:var(--pink);border:1px solid var(--pink-border)}
+.b-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.3)}
+.b-gray{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+.iv{color:var(--green);font-size:12px;font-weight:600}
+.ie{color:var(--red);font-size:12px;font-weight:600}
+.iw{color:var(--amber);font-size:12px;font-weight:600}
+.im{color:var(--text3);font-size:12px}
+.tw{overflow-x:auto;border-radius:var(--rad);border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:11px 14px;font-weight:600;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr.cr{cursor:pointer}
+tr.cr:hover td{background:var(--bg2)}
+tr.ex td{background:var(--bg2)}
+tr.xr td{padding:0}
+.xc{padding:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;background:var(--bg2)}
+.xn{grid-column:1/-1;padding:12px 14px;background:rgba(245,158,11,.08);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12px;color:var(--text2);line-height:1.6}
+.xl2{font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.xv2{font-size:13px;font-weight:500}
+.fl{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+input[type=text],select{font-family:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--border2);border-radius:var(--rads);background:var(--bg2);color:var(--text);outline:none}
+input[type=text]:focus,select:focus{border-color:var(--pink)}
+input[type=text]{flex:1;min-width:200px}
+input[type=text]::placeholder{color:var(--text3)}
+select option{background:var(--bg2)}
+.rc{font-size:12px;color:var(--text3)}
+.hi{display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+.hi:last-child{border-bottom:none}
+.hi:hover,.hi.act{background:var(--bg2)}
+.hico{width:42px;height:42px;border-radius:10px;background:var(--pink-bg);border:1px solid var(--pink-border);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.hin{flex:1}
+.hnm{font-weight:600;font-size:14px}
+.hmt{font-size:12px;color:var(--text3);margin-top:2px}
+.hbd{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ib{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rads);padding:12px 16px;font-size:12px;color:var(--text3);margin-top:14px;display:flex;gap:8px}
+.nm{font-weight:500}.ns{font-size:11px;color:var(--text3);margin-top:1px}.tm{color:var(--text2)}.ts{font-size:12px}
+.empty{text-align:center;padding:3rem;color:var(--text3);font-size:13px}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--green-border);color:var(--green);padding:12px 20px;border-radius:var(--rads);font-size:13px;font-weight:500;z-index:200;transform:translateY(80px);opacity:0;transition:all .3s;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.err{border-color:var(--red-border);color:var(--red)}
+tr.row-red td:first-child{border-left:3px solid var(--red)}
+tr.row-amber td:first-child{border-left:3px solid var(--amber)}
+tr.row-green td:first-child{border-left:3px solid rgba(34,197,94,.4)}
+.qf-wrap{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.qf{padding:5px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;font-size:12px;font-family:inherit;cursor:pointer;color:var(--text3);transition:all .15s}
+.qf.active,.qf:hover{border-color:var(--pink);color:var(--pink);background:var(--pink-bg)}
+.issue-chip{display:inline-flex;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);margin-right:3px}
+.warn-chip{display:inline-flex;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.3);margin-right:3px}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="logo">⚡</div>
+    <div>
+      <div class="htitle">Compliance Dashboard</div>
+      <div class="hsub" id="hs">Active contractors &nbsp;·&nbsp; 22 May 2026</div>
+    </div>
+  </div>
+  <button class="upload-btn" onclick="openUpload()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    Upload New File
+  </button>
+</div>
+
+<div class="upload-overlay" id="uploadOverlay" onclick="closeUploadOutside(event)">
+  <div class="upload-modal">
+    <h3>Upload Compliance File</h3>
+    <p>Upload your .xlsm or .xlsx and all stats update instantly.</p>
+    <div class="drop-zone" id="dropZone" ondragover="onDrag(event)" ondragleave="offDrag()" ondrop="onDrop(event)">
+      <div class="dz-icon">📊</div>
+      <div class="dz-text">Drag & drop here or <strong onclick="document.getElementById('fi').click()">click to browse</strong></div>
+      <div class="dz-hint">Supports .xlsx and .xlsm</div>
+    </div>
+    <div class="progress-bar" id="progBar"><div class="progress-fill" id="progFill"></div></div>
+    <div class="parse-status" id="parseSt"></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="closeUpload()">Cancel</button></div>
+  </div>
+</div>
+<input type="file" id="fi" accept=".xlsx,.xlsm,.csv">
+
+<div class="tabs">
+  <button class="tab active" onclick="sw('o',this)">Overview</button>
+  <button class="tab" onclick="sw('c',this)">Contractors</button>
+  <button class="tab" onclick="sw('f',this)">Finishers</button>
+  <button class="tab" onclick="sw('h',this)">Upload History</button>
+</div>
+<div id="to"></div><div id="tc" style="display:none"></div><div id="tf" style="display:none"></div><div id="th" style="display:none"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SEED=[{"name":"Adeel Dar","jt":"","id":"2062","ltd":"9TH BIT SOLUTIONS LTD","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"Due / Expired","rtw":"1961 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Expired BH Document/s: Employers Liability Insurance, IR35 Protect Policy Schedule; No need employers liability insurance; Contractor decided not to t"},{"name":"Alvin Luchowa","jt":"Senior DevOps Engineer","id":"2382","ltd":"No","umb":"No","cd":"Margin Only","co":"Amach","con":"Ray Lo","ps":"","rtw":"","sds":"Margin Only","hmrc":"Margin Only","eli":"Margin Only","pii":"Margin Only","pli":"","sc":"Margin Only","scl":"Margin Only","ok":"Compliant","note":""},{"name":"Alysson Mclean","jt":"Pencil AI Studio Lead","id":"2361","ltd":"No","umb":"Nasa Umbrella Limited","cd":"Inside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"Umbrella","hmrc":"Umbrella","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Amer Khan","jt":"","id":"1782","ltd":"AMER KHAN TRADING LIMITED","umb":"No","cd":"Outside","co":"Kohlberg Kravis Roberts & Co Partners LLP","con":"Thomas Gallyer","ps":"Due / Expired","rtw":"","sds":"Yes","hmrc":"None on file","eli":"60 Days","pii":"60 Days","pli":"60 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: Proof of Bank Details, IR35 Protect Policy Schedule, HMRC CEST Tool, Employers Liability Insurance\n\n\nExpired BH Document/s: Rig"},{"name":"Anthony Stokes","jt":"","id":"2059","ltd":"Joggler Inc Ltd","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"Due / Expired","rtw":"344 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"No action required"},{"name":"Arash Lowni","jt":"","id":"2161","ltd":"This Is Thingy","umb":"No","cd":"Outside","co":"TryHackMe","con":"Maria Whitmarsh","ps":"Due / Expired","rtw":"74 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Archie Strange","jt":"Next Developer","id":"2305","ltd":"Strange Solutions Ltd","umb":"No","cd":"Outside","co":"Omnio","con":"Robert Legg","ps":"","rtw":"2872 days left","sds":"N/A","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Arjun Venkatesh","jt":"Senior Front End Developer","id":"2249","ltd":"Yes (based in India)","umb":"No","cd":"Outside","co":"Kaplan","con":"Bailey Johnson","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Not Applicable","eli":"Not Applicable","pii":"Not Applicable","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: Proof of Bank Details, VAT Certificate/Number, Certificate of Incorporation, SDS: IR35 REPORT, HMRC CEST Tool, IR35 Protect Poli"},{"name":"Billy Davies","jt":"","id":"2194","ltd":"BD IT Limited","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Valid","rtw":"2489 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Chris Orrin","jt":"","id":"2197","ltd":"Chris Orrin Consultancy Ltd","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Valid","rtw":"1716 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Insuances out of date from 04/09"},{"name":"Christopher Ives","jt":"","id":"1902","ltd":"PixelPulse Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"Expired","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"New insurances added to BH on 17/09/2025"},{"name":"Craig Dakin","jt":"Communications/Change Manager","id":"2394","ltd":"CRD Communications Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"None on file","hmrc":"None on file","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Missing docs on BH: Certificate of Incorporation, SDS IR35 Report, HMRC Cest Tool, IR35 Policy, Employer's Liability Insurance"},{"name":"Craig Histed","jt":"","id":"2122","ltd":"AJ Agile Delivery Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"Yes","hmrc":"Yes","eli":"Expired","pii":"Valid","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"No action required"},{"name":"Demetrius Palmer","jt":"Security Engineer","id":"2390","ltd":"No","umb":"Precision Global Consulting","cd":"Umbrella","co":"GM Performance Power Units","con":"Will Youle","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Not Applicable","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Missing on BH: VAT Cert/Number, Certificate of Incorporation, RTW, Employer's Liability Insurance, Professional Indemnity Insurance, Public Liability "},{"name":"Derin Ruban","jt":"Lead QA (inc. automation)","id":"2076","ltd":"No","umb":"No","cd":"Margin Only","co":"AndDigital","con":"Abi Muir","ps":"","rtw":"","sds":"Margin Only","hmrc":"Margin Only","eli":"Margin Only","pii":"Margin Only","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Dev Gowtham","jt":"Test Lead","id":"2114","ltd":"Nterprise Ventura Limited","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"2697 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Expired BH Document/s: IR35 Protect Policy Schedule: This is fine, please mark as compliant - Charlie's email 200226"},{"name":"Donato Tovar","jt":"","id":"2142","ltd":"Workwell","umb":"Workwell (6CATS)","cd":"Umbrella","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"228 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Candidate is bsaed in Mexico via Workwell"},{"name":"Donna Andronicos WT","jt":"","id":"2010","ltd":"Change Over Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"2742 days left","sds":"Yes","hmrc":"Yes","eli":"Yes","pii":"Yes","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"F26 SOW now drafted and complete"},{"name":"Doreen Leon","jt":"","id":"2134","ltd":"QFE Consulting Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Valid","rtw":"283 days left","sds":"Yes","hmrc":"Yes","eli":"Expired","pii":"Expired","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"IR35 SDS received on 31/07/2025. Nothing further outstanding"},{"name":"Emily Baker","jt":"","id":"2144","ltd":"EGB Digital Ltd","umb":"Yes","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"2196 days left","sds":"N/A","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: IR35 Protect Policy Schedule; Contractor decided not to take IR35 Protect Policy Schedule - Charlie; Compliant"},{"name":"Ezekiel Okafor","jt":"Senior SRE","id":"2237","ltd":"","umb":"Deel","cd":"N/A","co":"Rackspace","con":"David/Ray","ps":"Due / Expired","rtw":"","sds":"N/A Finland","hmrc":"N/A Finland","eli":"Valid","pii":"Valid","pli":"Valid","sc":"","scl":"Yes","ok":"Compliant","note":""},{"name":"Fernando Papa","jt":"","id":"2188","ltd":"","umb":"Deel","cd":"N/A - Deel","co":"Rackspace","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"Deel","hmrc":"Deel","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Details added 09/09/2025. Compliant, but need R2W"},{"name":"Fitzroy Johnson","jt":"","id":"2004","ltd":"Hillcrest Training & Consultancy Limited","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"626 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Gagan Aujla","jt":"Programme Manager","id":"1937","ltd":"A&G Synergy Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"1717 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: Proof of Bank Details; Already verified by accounts - Charlie; Compliant"},{"name":"Grant Jackson","jt":"","id":"2060","ltd":"Grant Jackson Software Solutions Ltd","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"Due / Expired","rtw":"1613 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: Proof of Bank Details, VAT Certificate/Number, IR35 Protect Policy Schedule: This is fine, please mark as compliant - Charlie's"},{"name":"Gustavo Kristic","jt":"","id":"2189","ltd":"","umb":"Deel","cd":"N/A - Deel","co":"Rackspace","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"COR","hmrc":"COR","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Need contractors right to work"},{"name":"Iain Halliwell","jt":"","id":"2099","ltd":"Scruffy Teddy Productions Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"845 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Expired","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: IR35 Protect Policy Schedule; Contractor decided not to take IR35 Protect Policy Schedule - Charlie; Compliant"},{"name":"Ibrahim Oguz","jt":"","id":"2063","ltd":"IDABYTE LTD","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"Due / Expired","rtw":"3022 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Ignacio Carugati","jt":"","id":"2191","ltd":"","umb":"Deel","cd":"N/A - Deel","co":"Rackspace","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"COR","hmrc":"COR","eli":"Valid","pii":"60 Days","pli":"60 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Need contractors right to work, has been uploaded to the Deel portal"},{"name":"Ismael Ambrosi","jt":"","id":"2192","ltd":"","umb":"Deel","cd":"Deel","co":"Rackspace","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"COR","hmrc":"COR","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Need contractors right to work, has been uploaded to the Deel portal"},{"name":"Isobel Kenney Herbert","jt":"","id":"2200","ltd":"IKH Studios Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"1479 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: Proof of Bank Details, IR35 Protect Policy Schedule; Already verified by accounts; Contractor decided not to take IR35 Protect "},{"name":"Jack Slater","jt":"","id":"1958","ltd":"JS24 Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"2888 days left","sds":"Yes","hmrc":"Yes","eli":"<30 Days","pii":"<30 Days","pli":"<30 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: Proof of Bank Details, VAT Certificate/Number, IR35 Protect Policy Schedule: This is fine, please mark as compliant - Charlie's"},{"name":"Jamie Nash","jt":"Data Migration Consultant","id":"1850","ltd":"Ark Computer  Consultancy LTD","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"1390 days left","sds":"Yes","hmrc":"Yes","eli":"<30 Days","pii":"<30 Days","pli":"<30 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Jeremy Proctor","jt":"","id":"2092","ltd":"Aligned Consulting Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: IR35 Protect Policy Schedule; Contractor decided not to take IR35 Protect Policy Schedule - Charlie; Compliant"},{"name":"Joel Mitchell","jt":"Contract Developer","id":"2320","ltd":"Bufftail LtD","umb":"No","cd":"Outside","co":"Inforcer","con":"Robert Legg","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: Employer's Liability Insurance"},{"name":"Joseph Griffiths","jt":"Scala Engineer","id":"2368","ltd":"Active Live Services","umb":"No","cd":"Outside","co":"ITV","con":"Maria Whitmarsh","ps":"","rtw":"1390 days left","sds":"Yes","hmrc":"Yes","eli":"None on file","pii":"None on file","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"See Charlie Notes >"},{"name":"Joshua Porritt","jt":"Data Quality Analyst","id":"2006","ltd":"","umb":"Nasa Umbrella Ltd","cd":"Umbrella","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"986 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"Valid","pii":"60 Days","pli":"60 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Kerry Sneddon","jt":"Data Quality Analyst","id":"1857","ltd":"Sneddon Smart Solutions Ltd","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"1753 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"New insurances added to BH on 13/08. Nothing further outstanding"},{"name":"Kevin Dickson","jt":"Requirements and Change Manager","id":"2337","ltd":"Dixonesq Ltd","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Abi Muir","ps":"","rtw":"504 days left","sds":"Not Applicable","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: SDS: IR35 REPORT; IR35 Insurance"},{"name":"Lakhvir Rehal","jt":"","id":"2196","ltd":"MIDAS IT PROJECTS LIMITED","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"2162 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: IR35 Protect Policy Schedule, Employers Liability Insurance: Fine with this, please mark as compliant. - Charlie's email 120226"},{"name":"Lee Innell","jt":"EYES Data Quality Officer","id":"2376","ltd":"No","umb":"Sapphire DNP Limited","cd":"Inside","co":"Constellia Limited (Hillingdon)","con":"Abi Muir","ps":"","rtw":"","sds":"Umbrella","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"None on file","scl":"Yes","ok":"Non-Compliant","note":"Expired: Employers Liability Insurance, Professional Indemnity Insurance, Public Liability Insurance"},{"name":"Lelia Roche-Kelly","jt":"Requirements & Change Manager","id":"2296","ltd":"OPEN MINDS IT CONSULTANCY LIMITED","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Lisa Postarnak","jt":"","id":"2126","ltd":"","umb":"Deel","cd":"Deel","co":"Rackspace","con":"David Green/Ray","ps":"Due / Expired","rtw":"","sds":"COR","hmrc":"Deel","eli":"<30 Days","pii":"<30 Days","pli":"<30 Days","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Contractor extension is in Deel"},{"name":"Lukasz Jakubowski","jt":"","id":"2129","ltd":"","umb":"WorkWell","cd":"Workwell","co":"Econify","con":"Thomas Gallyer/Ray","ps":"Valid","rtw":"","sds":"Umbrella","hmrc":"Umbrella","eli":"Expired","pii":"Expired","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Compliant - countersigned contract received 21/07/2025. Nothing further outstanding"},{"name":"Magdalena Jezierska","jt":"","id":"2085","ltd":"In-Sync","umb":"In-Sync","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"3000 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Marie Connor","jt":"","id":"2084","ltd":"Nasa Umbrella Limited","umb":"Nasa Umbrella Limited","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"Expired","sds":"Umbrella","hmrc":"Umbrella","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Matt Swift","jt":"Contract Developer","id":"2326","ltd":"Open Road Software LTD","umb":"No","cd":"Outside","co":"Inforcer","con":"Robert Legg","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: IR35 Insurance"},{"name":"Matthew Enks","jt":"Contract Developer","id":"2322","ltd":"Keycentric LTD","umb":"No","cd":"Outside","co":"Inforcer","con":"Robert Legg","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: IR35 Insurance"},{"name":"Matthew Sadler","jt":"Contract Developer","id":"2321","ltd":"Resonant Development LTD","umb":"No","cd":"Outside","co":"Inforcer","con":"Robert Legg","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: VAT Number, IR35 Insurance"},{"name":"Matthew Wade","jt":"Project Manager","id":"2308","ltd":"MAW PROJECT SERVICES LTD","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Abi Muir","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Document/s: VAT Certificate/Number, SDS: IR35 REPORT, IR35 Protect Policy Schedule"},{"name":"Megan Chandler","jt":"Programme Manager","id":"1821","ltd":"MC PROGRAMME MANAGEMENT LTD","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Expired","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Michael Jankowski","jt":"","id":"2162","ltd":"Modillon Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"Due / Expired","rtw":"467 days left","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"SDS received on 04/08/2025. Nothing further outstanding"},{"name":"Naushad Nazir","jt":"","id":"1981","ltd":"No","umb":"Umbrella-Company Limited","cd":"Inside","co":"Blackstone Asset Management","con":"Abi Muir","ps":"Due / Expired","rtw":"2631 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"Expired","pii":"Expired","pli":"Expired","sc":"Yes","scl":"Yes","ok":"Compliant","note":"No action required"},{"name":"NITIN DAHAT","jt":"Project Manager","id":"2329","ltd":"Aarpi Homes Limited","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"None on file","hmrc":"Yes","eli":"Valid","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Nyree Ellison","jt":"","id":"1905","ltd":"NYREE ELLISON ANJOS CONSULTANTS LIMITED","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"Due / Expired","rtw":"","sds":"Yes","hmrc":"Yes","eli":"Valid","pii":"Valid","pli":"Valid","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Oluyemisi Olagoke","jt":"Data Quality Officer","id":"2352","ltd":"Samuel G Ltd","umb":"No","cd":"Outside","co":"Constellia Limited (Hillingdon)","con":"Abi Muir","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Yes","eli":"Valid","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: VAT Certificate/Number, SDS: IR35 REPORT, IR35 Protect Policy Schedule, Employers Liability Insurance"},{"name":"Pablo Fiordelmondo","jt":"","id":"2193","ltd":"","umb":"Deel","cd":"Deel","co":"Rackspace","con":"Ray Lo","ps":"","rtw":"","sds":"COR","hmrc":"COR","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Need contractors right to work but has been uploaded to the Deel portal"},{"name":"Paul Jones","jt":"Project Manager","id":"2362","ltd":"Paul Jones Project Management Limited","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Not Applicable","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: VAT Certificate/Number, SDS: IR35 REPORT, HMRC CEST Tool, IR35 Protect Policy Schedule, Employers Liability Insurance\nAdditional"},{"name":"Paul McDermott","jt":"","id":"2096","ltd":"Audient Commerce Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson/Ray","ps":"","rtw":"Expired","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Pearly Moses","jt":"Data Analyst","id":"2274","ltd":"No","umb":"Perfectechcyber Ltd","cd":"Inside","co":"Aspect Education Ltd","con":"Bailey Johnson","ps":"","rtw":"","sds":"Umbrella","hmrc":"Umbrella","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Peter Tomaney","jt":"","id":"2002","ltd":"PT LOGIC SERVICES LTD","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"","rtw":"1634 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Peter Winston","jt":"","id":"2064","ltd":"Locus Realities Ltd","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Petr Nejedly","jt":"Scala Engineer","id":"2367","ltd":"Six Lines Limited","umb":"No","cd":"Outside","co":"ITV","con":"Maria Whitmarsh","ps":"","rtw":"1654 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: IR35 Protect Policy Schedule"},{"name":"Philip Gleghorn","jt":"","id":"2141","ltd":"Foghorn Digital Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"283 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Philip Skill","jt":"Arcus Implementation Consultant","id":"2335","ltd":"KAPAS Consultancy Ltd","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Abi Muir","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: SDS: IR35 REPORT; IR35 Insurance"},{"name":"Pranal Sail","jt":"Network Engineer","id":"1377","ltd":"Shree Mallikarjun Technologies UK Ltd","umb":"No","cd":"Outside","co":"Kohlberg Kravis Roberts & Co Partners LLP","con":"Bailey Johnson","ps":"","rtw":"310 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Insurances received, added on 01/09/2025"},{"name":"Raghavendran Suryanarayanan","jt":".NET Software Engineer","id":"1686","ltd":"Rudra Infotech LTD","umb":"No","cd":"Outside","co":"Derivco","con":"Rob Legg","ps":"","rtw":"2945 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Ramon Singh","jt":"","id":"2211","ltd":"No","umb":"No","cd":"Margin Only","co":"AND Digital","con":"Maria Whitmarsh","ps":"","rtw":"","sds":"Margin Only","hmrc":"Margin Only","eli":"Margin Only","pii":"Margin Only","pli":"Margin Only","sc":"Margin Only","scl":"Yes","ok":"Compliant","note":""},{"name":"Richard Ellis","jt":"Frontend Engineer","id":"1636","ltd":"Looks Technical Limited","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"1102 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Renewed insurances added to BH on 28/07/2025. Nothing further outstanding"},{"name":"Robert Price","jt":"Next Developer","id":"2372","ltd":"Websure Solutions Limited","umb":"No","cd":"Outside","co":"Omnio","con":"Elyssa Fanning","ps":"","rtw":"810 days left","sds":"N/A","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Roger Ewing","jt":"Senior Salesforce Platform Engineer","id":"2391","ltd":"","umb":"Nasa Umbrella Ltd","cd":"Inside","co":"Foundation Home Loans","con":"Robert Legg","ps":"","rtw":"","sds":"Not Applicable","hmrc":"Not Applicable","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Missing on BH: Proof of Bank details, VAT Cert/Number, Cert of Incorporation, RTW, Employer's Liability Insurance, Professional Indemnity Insurance, P"},{"name":"Ross Richardson","jt":"IT Programme Manager","id":"2348","ltd":"GREENMONKEY IT LIMITED","umb":"No","cd":"Outside","co":"Ingeus UK","con":"Martin Rennison","ps":"","rtw":"2720 days left","sds":"None on file","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Samuel Samidas","jt":"IT Support","id":"635","ltd":"Decension Limited","umb":"No","cd":"Outside","co":"Kohlberg Kravis Roberts & Co Partners LLP","con":"Bailey Johnson","ps":"","rtw":"1962 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Insurances added 18/08/2025. Nothing futher outstanding."},{"name":"Sandeep Mestry","jt":"","id":"2088","ltd":"Season Consultancy Limited","umb":"No","cd":"Outside","co":"ITV","con":"Abi/Ray","ps":"","rtw":"49 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Expired docs: IR35 Policy, Employer's Liability Insurance, Professional Indemnity Insurance, Public Liability Insurance"},{"name":"Sascha Nagel","jt":"Service Desk Engineer","id":"2264","ltd":"No","umb":"6CATS INTERNATIONAL LTD.","cd":"Inside","co":"Kohlberg Kravis Roberts GmbH","con":"Bailey Johnson","ps":"","rtw":"","sds":"Umbrella","hmrc":"Umbrella","eli":"","pii":"Yes","pli":"","sc":"Yes","scl":"None on file","ok":"Non-Compliant","note":"Expired docs: Employer's Liability Insurance, Professional Indemnity Insurance, Public Liability Insurance"},{"name":"Simon Warde","jt":".NET Software Engineer","id":"1347","ltd":"PTU Consulting LTD","umb":"No","cd":"","co":"Derivco Ipswich Ltd","con":"Rob Legg","ps":"","rtw":"239 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Expired docs: IR35 Policy, Professional Indemnity Insurance, Public Liability Insurance"},{"name":"Stephen Ritchie","jt":"","id":"2065","ltd":"Nebway Cloud Solutions","umb":"No","cd":"Outside","co":"Next Holdings Ltd","con":"Rob Legg","ps":"","rtw":"1800 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Stevie Rowe","jt":"","id":"2093","ltd":"Scruffy Teddy Productions Ltd","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"1382 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Non-Compliant","note":"Expired docs: Employer's Liability Insurance, Professional Indemnity Insurance, Public Liability Insurance"},{"name":"Tariq Ali","jt":"","id":"2198","ltd":"HIMS CONSULTANCY (HOUSING & IT ) LTD","umb":"No","cd":"Outside","co":"London Borough of Hillingdon","con":"Ray Lo","ps":"","rtw":"2613 days left","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Need proof of bank details"},{"name":"Tina Akinyelure","jt":"","id":"2222","ltd":"Technical T Solutions LTD","umb":"No","cd":"Outside","co":"PEI (Private Equity International)","con":"Abi Muir","ps":"","rtw":"1597 days left","sds":"Yes","hmrc":"None on file","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Uzair Arshad","jt":"Data Quality Officer","id":"2354","ltd":"U&M Limited","umb":"No","cd":"Outside","co":"Constellia Limited (Hillingdon)","con":"Abi Muir","ps":"","rtw":"2028 days left","sds":"Not Applicable","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: SDS: IR35 REPORT, IR35 Protect Policy Schedule, Employers Liability Insurance"},{"name":"Vanesa Castillo","jt":"Social Media Manager","id":"2334","ltd":"No","umb":"Paystream","cd":"Inside","co":"Haypp Group","con":"Bailey Johnson","ps":"","rtw":"2756 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"None on file","pii":"None on file","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":""},{"name":"Viktor Gabor Bicskey","jt":"Data Migration Lead","id":"2338","ltd":"Vronten Kft","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"None on file","hmrc":"None on file","eli":"None on file","pii":"None on file","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Missing BH Documents: VAT Certificate/Number, SDS: IR35 REPORT, HMRC CEST Tool, IR35 Protect Policy Schedule, Employers Liability Insurance, Public Li"},{"name":"Vineesh Purakkal","jt":"Software Engineer","id":"2375","ltd":"No","umb":"No","cd":"Margin Only","co":"Version1 Software Limited","con":"Archie Burt","ps":"","rtw":"","sds":"Margin Only","hmrc":"Margin Only","eli":"Margin Only","pii":"Margin Only","pli":"","sc":"Margin Only","scl":"Yes","ok":"Compliant","note":""},{"name":"Zain Ali","jt":"Systems Engineer","id":"2262","ltd":"No","umb":"Z Ali Contracting Services Ltd","cd":"Inside","co":"Kohlberg Kravis Roberts & Co Partners LLP","con":"Kevin Hammond","ps":"","rtw":"253 days left","sds":"Umbrella","hmrc":"Umbrella","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"},{"name":"Zariat Gbajabiamila","jt":"Business Analyst","id":"1797","ltd":"Zabide LTD","umb":"No","cd":"Outside","co":"Diageo Great Britain","con":"Bailey Johnson","ps":"","rtw":"","sds":"Yes","hmrc":"Yes","eli":"","pii":"","pli":"","sc":"Yes","scl":"Yes","ok":"Compliant","note":"Nothing further outstanding"}]
+// ── stats computation ─────────────────────────────────────────────────────────
+function computeHelperStats(data){
+  const total=data.length;
+  const cnt=(f,v)=>data.filter(r=>(r[f]||'').trim()===v).length;
+  const p=n=>total>0?Math.round(n/total*100):0;
+  const mk=(f,ls)=>ls.map(l=>({l,n:cnt(f,l),p:p(cnt(f,l))}));
+  return{total,compliant:cnt('ok','Compliant'),non_compliant:cnt('ok','Non-Compliant'),
+    ltd:mk('ltd',['Yes','No','Margin only','Missing']),
+    umbrella:mk('umb',['Yes','No','Margin only','Missing']),
+    client_det:[{l:'Inside',n:cnt('cd','Inside'),p:p(cnt('cd','Inside'))},
+      {l:'Outside',n:cnt('cd','Outside'),p:p(cnt('cd','Outside'))},
+      {l:'N/A (Margin only, MO, Deel, Umbrella, Workwell)',n:data.filter(r=>['Margin Only','N/A - Deel','Deel','Umbrella','Workwell','N/A'].includes(r.cd)).length,p:p(data.filter(r=>['Margin Only','N/A - Deel','Deel','Umbrella','Workwell','N/A'].includes(r.cd)).length)},
+      {l:'Missing',n:cnt('cd',''),p:p(cnt('cd',''))}],
+    placement_start:[{l:'Valid',n:cnt('ps','Valid'),p:p(cnt('ps','Valid'))},{l:'Due in 60 Days',n:0,p:0},{l:'Due in 30 Days',n:0,p:0},
+      {l:'Due/Expired',n:cnt('ps','Due / Expired'),p:p(cnt('ps','Due / Expired'))},{l:'Missing',n:0,p:0}],
+    placement_end:[{l:'Valid',n:0,p:0},{l:'Due in 60 Days',n:0,p:0},{l:'Due in 30 Days',n:0,p:0},{l:'Due/Expired',n:0,p:0},{l:'Missing',n:0,p:0}],
+    signed_contractor:[{l:'Yes',n:cnt('sc','Yes'),p:p(cnt('sc','Yes'))},{l:'No',n:0,p:0},
+      {l:'Margin only',n:cnt('sc','Margin Only'),p:p(cnt('sc','Margin Only'))},{l:'N/A',n:0,p:0},{l:'Missing',n:cnt('sc',''),p:p(cnt('sc',''))}],
+    signed_client:[{l:'Yes',n:cnt('scl','Yes'),p:p(cnt('scl','Yes'))},{l:'No',n:0,p:0},{l:'Missing',n:0,p:0}],
+    rtw:[{l:'Valid',n:data.filter(r=>r.rtw&&r.rtw.includes('days')).length,p:p(data.filter(r=>r.rtw&&r.rtw.includes('days')).length)},
+      {l:'Due in 60 Days',n:0,p:0},{l:'Due in 30 Days',n:0,p:0},
+      {l:'Expired',n:cnt('rtw','Expired'),p:p(cnt('rtw','Expired'))},{l:'Missing',n:0,p:0},{l:'N/A',n:0,p:0}],
+    eli:buildIns(data,'eli'),pii:buildIns(data,'pii'),pli:buildIns(data,'pli')};}
+function buildIns(data,f){const total=data.length;const p=n=>total>0?Math.round(n/total*100):0;
+  return[{l:'Valid',n:data.filter(r=>r[f]==='Valid').length,p:p(data.filter(r=>r[f]==='Valid').length)},
+    {l:'Due in 60 Days',n:data.filter(r=>r[f]==='60 Days').length,p:p(data.filter(r=>r[f]==='60 Days').length)},
+    {l:'Due in 30 Days',n:data.filter(r=>r[f]==='<30 Days').length,p:p(data.filter(r=>r[f]==='<30 Days').length)},
+    {l:'Expired',n:data.filter(r=>r[f]==='Expired').length,p:p(data.filter(r=>r[f]==='Expired').length)},
+    {l:'Missing',n:data.filter(r=>!r[f]||r[f]==='None on file').length,p:p(data.filter(r=>!r[f]||r[f]==='None on file').length)},
+    {l:'N/A',n:0,p:0}];}
+
+
+// SEED_HS computed from SEED so it always matches actual data
+const SEED_HS = computeHelperStats(SEED);
+
+const SEED_FIN=[
+  {name:'Andrew Partlow',id:'2057',co:'Next Holdings Ltd',con:'Rob Legg',end:'21/01/2022',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'No'},
+  {name:'Antony Dunford',id:'1725',co:'Ingeus UK',con:'Ray Lo',end:'',ok:'Finisher',eli:'Valid',pii:'Expired',pli:'Expired',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Needs updated Insurance Certificate',hold:'No'},
+  {name:'Basharat Syed',id:'2075',co:'Next Holdings Ltd',con:'Rob Legg',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Proof of Bank Details, IR35 Protect Policy Schedule',hold:'No'},
+  {name:'Charndeep Bhogal',id:'1855',co:'Rackspace Technology',con:'Ray Lo',end:'',ok:'Finisher',eli:'60 Days',pii:'60 Days',pli:'60 Days',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing IR35 Protect Policy Schedule',hold:'No'},
+  {name:'Derin Ruban',id:'2076',co:'AND Digital',con:'Abi/Ray',end:'31/12/2025',ok:'Finisher',eli:'Margin Only',pii:'Margin Only',pli:'Margin Only',sc:'Margin Only',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'Yes'},
+  {name:'Joshua Porritt',id:'2006',co:'London Borough of Hillingdon',con:'Ray Lo',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'',hold:'No'},
+  {name:'Julian Tellez',id:'1912',co:'ITV',con:'Ray Lo',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Expired',note:'Missing: IR35 Policy, ELI',hold:'No'},
+  {name:'Kerry Sneddon',id:'1857',co:'London Borough of Hillingdon',con:'Ray Lo',end:'25/08/2025',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Bank Details, VAT, IR35 Policy, ELI',hold:'No'},
+  {name:'Lee Innell (finisher)',id:'2128',co:'London Borough of Hillingdon',con:'Ray Lo',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'',hold:'No'},
+  {name:'Marc Wyburn',id:'2019',co:'Kingfisher International',con:'Will Youle',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Proof of Bank Details',hold:'No'},
+  {name:'Maria Feria',id:'2066',co:'Previsico',con:'James Clayton',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: SDS IR35, IR35 Policy, ELI',hold:'No'},
+  {name:'Michael Pomfret',id:'1977',co:'Public Sector Resourcing',con:'Abi/Ray',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Proof of Bank Details',hold:'No'},
+  {name:'Raj Paili',id:'2061',co:'Next Holdings Ltd',con:'Rob Legg',end:'17/06/2022',ok:'Finisher',eli:'Expired',pii:'Valid',pli:'Expired',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Bank Details, ELI',hold:'No'},
+  {name:'Wendy Akaki',id:'2008',co:'Diageo Great Britain',con:'Bailey Johnson',end:'30/04/2025',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: VAT, IR35 Policy',hold:'No'},
+  {name:'Nick Panasar',id:'2279',co:'Diageo Great Britain',con:'Bailey Johnson',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: VAT, SDS IR35, IR35 Policy',hold:'No'},
+  {name:'Abdel Hegazi',id:'2097',co:'Ascendion',con:'James Clayton',end:'',ok:'Non Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Margin Only',scl:'None on file',rtw:'Valid',note:'Missing: Signed Client Contract',hold:'No'},
+  {name:'Prasad Sriramula',id:'2231',co:'Lolas Cupcakes',con:'James Clayton',end:'',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'None on file',scl:'None on file',rtw:'Valid',note:'Missing: Signed contracts, SDS, HMRC CEST',hold:'No'},
+  {name:'Sakshat Baral',id:'2118',co:'Focaldata Limited',con:'Maria/Tom',end:'',ok:'Finisher',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: IR35 Policy, ELI',hold:'No'},
+  {name:'Stuart Oldfield',id:'2214',co:'Version 1',con:'Ray Lo',end:'',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Margin Only',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'Yes'},
+  {name:'Anthony Cowan',id:'2247',co:'AND Digital',con:'Ray Lo',end:'28/10/2026',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Margin Only',scl:'Yes',rtw:'Valid',note:'End date discrepancy BH vs contract',hold:'No'},
+  {name:'Ade Lawal',id:'1462',co:'Samsung SDS Europe',con:'Thomas Gallyer',end:'31/12/2021',ok:'Compliant',eli:'Expired',pii:'Expired',pli:'Expired',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Via Umbrella — docs in compliance pack',hold:'No'},
+  {name:'Donna Andronicos DR',id:'2046',co:'Diageo Great Britain',con:'Bailey Johnson',end:'',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'SOW awaiting signature + SDS',hold:'Yes'},
+  {name:'Lelia Roche Kelly',id:'2195',co:'London Borough of Hillingdon',con:'Ray Lo',end:'',ok:'Compliant',eli:'<30 Days',pii:'<30 Days',pli:'<30 Days',sc:'Yes',scl:'Yes',rtw:'Expired',note:'SDS signed and added',hold:'No'},
+  {name:'Ross Richardson',id:'1683',co:'Ingeus UK Ltd',con:'Ray Lo',end:'31/01/2025',ok:'Compliant',eli:'60 Days',pii:'60 Days',pli:'60 Days',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: SDS IR35, IR35 Policy',hold:'No'},
+  {name:'Suresh Pasala',id:'2058',co:'Next Holdings Ltd',con:'Rob Legg',end:'',ok:'Compliant',eli:'Valid',pii:'Expired',pli:'Expired',sc:'Yes',scl:'Yes',rtw:'Expired',note:'Missing: Bank Details, VAT',hold:'No'},
+  {name:'Zain Ali',id:'1744',co:'Kohlberg Kravis Roberts',con:'Kevin Hammond',end:'',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'Yes'},
+  {name:'Alvin Luchowa',id:'1266',co:'Amach Software Ltd',con:'Bailey Johnson',end:'',ok:'Compliant',eli:'Expired',pii:'Expired',pli:'Expired',sc:'Yes',scl:'Yes',rtw:'Expired',note:'All fine — mark as compliant',hold:'No'},
+  {name:'Jo Dixon',id:'2302',co:'Diageo Great Britain',con:'Maria Whitmarsh',end:'20/02/2026',ok:'Finishers',eli:'Expired',pii:'Expired',pli:'Expired',sc:'None on file',scl:'Yes',rtw:'Missing',note:'Missing: Signed contractor contract, RTW. Expired: ELI, PII, PLI',hold:'No'},
+  {name:'Chris Zacharia',id:'2229',co:'London Borough of Hillingdon',con:'Bailey Johnson/Ray',end:'',ok:'Finishers',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Missing: Bank Details — fine, mark compliant',hold:'No'},
+  {name:'Jane Phillips-Kelly',id:'2210',co:'Version 1',con:'Ray Lo',end:'',ok:'Finishers',eli:'Margin Only',pii:'Valid',pli:'Valid',sc:'Margin Only',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'Yes'},
+  {name:'Dean Spencer',id:'2232',co:'AND Digital',con:'Abi/Ray',end:'',ok:'Compliant',eli:'Margin Only',pii:'60 Days',pli:'Expired',sc:'Margin Only',scl:'Yes',rtw:'Valid',note:'Need MO Agreement screenshot',hold:'No'},
+  {name:'Paddy Tanguy Brown',id:'1414',co:'ZAIZI Ltd',con:'Melissa Deer',end:'',ok:'Compliant',eli:'60 Days',pii:'<30 Days',pli:'<30 Days',sc:'Yes',scl:'Yes',rtw:'Expired',note:'Compliant',hold:'No'},
+  {name:'Aminu Dikko',id:'2251',co:'AND Digital',con:'Maria Whitmarsh',end:'30/04/2026',ok:'Compliant',eli:'Margin Only',pii:'Margin Only',pli:'Margin Only',sc:'',scl:'Yes',rtw:'Margin Only',note:'Compliant',hold:'No'},
+  {name:'Joseph Griffiths',id:'2257',co:'ITV',con:'Maria Whitmarsh',end:'17/05/2026',ok:'Compliant',eli:'Valid',pii:'Valid',pli:'Valid',sc:'Yes',scl:'Yes',rtw:'Valid',note:'Compliant',hold:'No'},
+];
+
+let LIVE=SEED.slice(),LIVE_HS=Object.assign({},SEED_HS),LIVE_FIN=SEED_FIN.slice();
+let UH=[{id:1,name:'Compliance_Data_2026.xlsm',date:'22 May 2026',count:SEED.length,compliant:SEED.filter(r=>r.ok==='Compliant').length,nonCompliant:SEED.filter(r=>r.ok==='Non-Compliant').length,hs:SEED_HS,fin:SEED_FIN}];
+let AU=1,AT='o',SQ='',FS='all',FC='all',EX=null,FSQ='',FFS='all',FFC='all',FEX=null;
+
+// ── KEY FIX: normalised column lookup ─────────────────────────────────────────
+// Headers in the Excel have trailing spaces, newlines, special chars.
+// We normalise by lowercasing + stripping whitespace for matching.
+function makeGetter(row) {
+  // Build a normalised key -> original key map
+  const norm = {};
+  Object.keys(row).forEach(k => { norm[k.toLowerCase().replace(/\s+/g,'')] = k; });
+  return function(aliases) {
+    for (const alias of aliases) {
+      const key = norm[alias.toLowerCase().replace(/\s+/g,'')];
+      if (key !== undefined) {
+        const v = row[key];
+        if (v !== undefined && v !== '' && String(v).trim() !== '#VALUE!') return String(v).trim();
+      }
+    }
+    return '';
+  };
+}
+
+function parseDataRow(row) {
+  const g = makeGetter(row);
+  return {
+    name: g(['CONTRACTORNAME','ContractorName']),
+    jt:   g(['JOBTITLE','JobTitle']),
+    id:   g(['PLACEMENTID','PlacementID']),
+    ltd:  g(['LTD']),
+    umb:  g(['Umbrella']),
+    cd:   g(['ClientDetermination']),
+    co:   g(['ClientCompanyName']),
+    con:  g(['Consultant']),
+    ps:   g(['PlacementDuetoStart']),
+    rtw:  g(['RighttoWorkStatus']),
+    eli:  g(['EmployersLiabilityInsuranceWarning','EmployersLiabilityInsuranceStatus']),
+    pii:  g(['ProfessionalIndemnityInsuranceWarning','ProfessionalIndemnityInsuranceExpiry']),
+    pli:  g(['PublicLiabilityInsuranceWarning','PublicLiabilityInsuranceExpiry']),
+    sc:   g(['SignedCandidateContractContractor']),
+    scl:  g(['SignedClientContractContractor']),
+    sds:  g(['SDS:IR35REPORT','SDSIR35REPORT']),
+    hmrc: g(['HMRCCESTTool(DateCreated)','HMRCCESTTool']),
+    ok:   g(['Compliant/NonCompliant']),
+    note: ''
+  };
+}
+
+function parseFinRow(row) {
+  const g = makeGetter(row);
+  return {
+    name: g(['CONTRACTORNAME','ContractorName']),
+    id:   g(['PLACEMENTID','PlacementID']),
+    co:   g(['ClientCompanyName']),
+    con:  g(['Consultant']),
+    end:  g(['PlacementEndDate','PLACEMENTENDDATE']),
+    ok:   g(['Compliant/NonCompliant']),
+    eli:  g(['EmployersLiabilityInsuranceWarning']),
+    pii:  g(['ProfessionalIndemnityInsuranceWarning','ProfessionalIndemnityInsuranceExpiry']),
+    pli:  g(['PublicLiabilityInsuranceWarning','PublicLiabilityInsuranceExpiry']),
+    sc:   g(['SignedCandidateContractContractor']),
+    scl:  g(['SignedClientContractContractor']),
+    rtw:  g(['RighttoWorkWarning','RighttoWorkStatus']),
+    note: g(['LheasNotes:','LeheasNotes:','Baileynotes']),
+    hold: g(['HoldComms?'])
+  };
+}
+
+// ── XLSX parser ───────────────────────────────────────────────────────────────
+function parseFile(file) {
+  setStatus(10, 'Reading file…');
+  const reader = new FileReader();
+  reader.onerror = () => setStatus(0, '✗ Could not read file', true);
+  reader.onload = function(e) {
+    try {
+      setStatus(35, 'Parsing workbook…');
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', cellDates:false, raw:false});
+      console.log('Sheets found:', wb.SheetNames);
+
+      // Find Data sheet
+      const dataSheetName = wb.SheetNames.find(n => /^data$/i.test(n.trim())) ||
+                             wb.SheetNames.find(n => /data/i.test(n)) ||
+                             wb.SheetNames[0];
+      // Find Finishers sheet
+      const finSheetName = wb.SheetNames.find(n => /finisher/i.test(n) && /lhea/i.test(n)) ||
+                            wb.SheetNames.find(n => /finisher/i.test(n));
+
+      console.log('Using data sheet:', dataSheetName, '| finishers sheet:', finSheetName);
+      setStatus(55, `Reading "${dataSheetName}"…`);
+
+      const wsData = wb.Sheets[dataSheetName];
+      const dataRows = XLSX.utils.sheet_to_json(wsData, {defval:'', raw:false});
+      console.log('Data rows found:', dataRows.length, '| Sample keys:', dataRows[0] ? Object.keys(dataRows[0]).slice(0,5) : 'none');
+
+      const parsed = dataRows.map(parseDataRow).filter(r => r.name && r.name !== 'CONTRACTOR NAME');
+      console.log('Parsed contractors:', parsed.length);
+
+      setStatus(75, `Reading finishers…`);
+      let parsedFin = SEED_FIN.slice();
+      if (finSheetName) {
+        const wsFin = wb.Sheets[finSheetName];
+        const finRows = XLSX.utils.sheet_to_json(wsFin, {defval:'', raw:false});
+        const fp = finRows.map(parseFinRow).filter(r => r.name && r.name !== 'CONTRACTOR NAME');
+        if (fp.length > 0) parsedFin = fp;
+        console.log('Parsed finishers:', fp.length);
+      }
+
+      setStatus(90, 'Computing stats…');
+      const hs = computeHelperStats(parsed.length > 0 ? parsed : LIVE);
+
+      if (parsed.length > 0) { LIVE = parsed; LIVE_HS = hs; }
+      if (parsedFin.length > 0) LIVE_FIN = parsedFin;
+
+      const ds = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+      const nu = {id:Date.now(), name:file.name, date:ds,
+        count:LIVE.length, compliant:LIVE.filter(r=>r.ok==='Compliant').length,
+        nonCompliant:LIVE.filter(r=>r.ok==='Non-Compliant').length, hs:LIVE_HS, fin:LIVE_FIN};
+      UH = [nu, ...UH]; AU = nu.id;
+      document.getElementById('hs').textContent = 'Active contractors · ' + ds;
+
+      setStatus(100, `✓ ${LIVE.length} contractors, ${LIVE_FIN.length} finishers loaded`);
+      setTimeout(() => { closeUpload(); rt(); showToast(`✓ ${file.name} loaded`); }, 800);
+
+    } catch(err) {
+      console.error('Parse error:', err);
+      setStatus(0, '✗ Error: ' + err.message, true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── upload UI ─────────────────────────────────────────────────────────────────
+function openUpload(){document.getElementById('uploadOverlay').classList.add('show');}
+function closeUpload(){document.getElementById('uploadOverlay').classList.remove('show');resetStatus();}
+function closeUploadOutside(e){if(e.target.id==='uploadOverlay')closeUpload();}
+function setStatus(pct,msg,isErr=false){
+  document.getElementById('progBar').style.display='block';
+  document.getElementById('progFill').style.width=pct+'%';
+  const st=document.getElementById('parseSt');
+  st.style.display='block';st.style.color=isErr?'var(--red)':'var(--pink)';st.textContent=msg;}
+function resetStatus(){
+  document.getElementById('progBar').style.display='none';
+  document.getElementById('progFill').style.width='0%';
+  const st=document.getElementById('parseSt');st.style.display='none';st.textContent='';}
+function onDrag(e){e.preventDefault();document.getElementById('dropZone').classList.add('drag');}
+function offDrag(){document.getElementById('dropZone').classList.remove('drag');}
+function onDrop(e){e.preventDefault();offDrag();const f=e.dataTransfer.files[0];if(f)parseFile(f);}
+document.getElementById('fi').addEventListener('change',e=>{const f=e.target.files[0];if(f)parseFile(f);e.target.value='';});
+// Make the drop zone clickable (not just the strong tag)
+document.getElementById('dropZone').addEventListener('click',()=>document.getElementById('fi').click());
+function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(err?' err':'');setTimeout(()=>t.classList.add('show'),10);setTimeout(()=>t.classList.remove('show'),3500);}
+
+// ── render helpers ────────────────────────────────────────────────────────────
+const CMAP={'Valid':'#22c55e','Due in 60 Days':'#f59e0b','Due in 30 Days':'#fbbf24','Due/Expired':'#ef4444','Expired':'#ef4444','Missing':'#6b7280','N/A':'#4b5563','Yes':'#22c55e','No':'#ef4444','Margin only':'#6b7280','Inside':'#ff3da6','Outside':'#f5c518','N/A (Margin only, MO, Deel, Umbrella, Workwell)':'#6b7280'};
+function statCard(title,rows,foot){
+  return`<div class="card"><div class="sl">${title}</div>
+    ${rows.map(r=>{const c=CMAP[r.l]||'#6366f1';return`<div class="stat-row"><div class="stat-dot" style="background:${c}"></div><span class="stat-label">${r.l}</span><span class="stat-n">${r.n}</span><span class="stat-p">${r.p}%</span><div class="stat-bar"><div class="bar-track"><div class="bar-fill" style="width:${Math.min(r.p,100)}%;background:${c}"></div></div></div></div>`;}).join('')}
+    <div class="stat-total">Total: ${foot}</div></div>`;}
+function ct(r){const cd=(r.cd||'').toLowerCase(),u=(r.umb||'').toLowerCase(),l=(r.ltd||'').toLowerCase();
+  if(cd.includes('margin only'))return'Margin Only';if(u.includes('deel')||cd.includes('deel'))return'Deel';
+  if(u.includes('workwell')||cd.includes('workwell'))return'Workwell';if(u&&u!=='no'&&u.length>3)return'Umbrella';
+  if(l&&l!=='no'&&l.length>3)return'LTD';return'Other';}
+function ic(w){if(!w||['margin only','deel','workwell','not applicable'].some(x=>w.toLowerCase().includes(x)))return'im';
+  const wl=w.toLowerCase();if(wl==='valid')return'iv';if(wl.includes('expired'))return'ie';
+  if(wl.includes('30')||wl.includes('60'))return'iw';if(wl.includes('none')||wl.includes('missing'))return'ie';return'im';}
+function il(w){if(!w||['margin only','deel','workwell','not applicable'].some(x=>w.toLowerCase().includes(x)))return'—';
+  const wl=w.toLowerCase();if(wl==='valid')return'✓ Valid';if(wl.includes('expired'))return'✗ Expired';
+  if(wl.includes('30')||wl.includes('60'))return'⚠ '+w;if(wl.includes('none')||wl.includes('missing'))return'✗ Missing';return w;}
+function ih(w){return`<span class="${ic(w)}">${il(w)}</span>`;}
+function bh(s){const sl=(s||'').toLowerCase();
+  if(sl.includes('compliant')&&!sl.includes('non'))return'<span class="badge b-green">✓ Compliant</span>';
+  if(sl.includes('non'))return'<span class="badge b-red">✗ Non-Compliant</span>';
+  if(sl.includes('finish'))return'<span class="badge b-yellow">Finisher</span>';
+  return`<span class="badge b-gray">${s||'—'}</span>`;}
+function finIssues(r){
+  const chips=[];
+  ({eli:'ELI',pii:'PII',pli:'PLI'});
+  [['eli','ELI'],['pii','PII'],['pli','PLI']].forEach(([f,label])=>{
+    const w=(r[f]||'').toLowerCase();
+    if(w.includes('expired')||w.includes('none')||w.includes('missing'))chips.push(`<span class="issue-chip">✗ ${label}</span>`);
+    else if(w.includes('30')||w.includes('60'))chips.push(`<span class="warn-chip">⚠ ${label}</span>`);
+  });
+  if((r.rtw||'').toLowerCase().includes('expired')||(r.rtw||'').toLowerCase().includes('missing'))chips.push('<span class="issue-chip">✗ RTW</span>');
+  return chips.join('')||'<span style="font-size:11px;color:var(--text3)">—</span>';}
+function finUrgency(r){
+  const issues=['eli','pii','pli','rtw'].some(f=>{const w=(r[f]||'').toLowerCase();return w.includes('expired')||w.includes('missing')||w.includes('none');});
+  const warns=['eli','pii','pli'].some(f=>{const w=(r[f]||'').toLowerCase();return w.includes('30')||w.includes('60');});
+  if((r.ok||'').toLowerCase().includes('non')||issues)return'row-red';
+  if(warns)return'row-amber';return'row-green';}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────────────────
+function statRows(rows, bars=false) {
+  return rows.map(r => {
+    const c = CMAP[r.l] || '#6b7280';
+    const bar = bars ? `<div class="stat-bar"><div class="bar-track"><div class="bar-fill" style="width:${Math.min(r.p,100)}%;background:${c}"></div></div></div>` : '';
+    return `<div class="stat-row" style="padding:6px 0"><div class="stat-dot" style="background:${c}"></div><span class="stat-label">${r.l}</span><span class="stat-n">${r.n}</span><span class="stat-p">${r.p}%</span>${bar}</div>`;
+  }).join('');
+}
+function sectionHead(label, color) {
+  return `<div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">${label}</div>`;
+}
+function ro() {
+  const hs = LIVE_HS;
+  const rate = hs.total > 0 ? Math.round(hs.compliant / hs.total * 100) : 0;
+  const rc = rate >= 90 ? 'var(--green)' : rate >= 75 ? 'var(--amber)' : 'var(--red)';
+  return `
+  <div class="g4">
+    <div class="kpi kpi-pink"><div class="kpi-label">Total contractors</div><div class="kpi-value" style="color:var(--pink)">${hs.total}</div></div>
+    <div class="kpi kpi-green"><div class="kpi-label">Compliant</div><div class="kpi-value" style="color:var(--green)">${hs.compliant}</div><div class="kpi-sub">${rate}% rate</div></div>
+    <div class="kpi kpi-red"><div class="kpi-label">Non-compliant</div><div class="kpi-value" style="color:var(--red)">${hs.non_compliant}</div></div>
+    <div class="kpi kpi-yellow"><div class="kpi-label">Compliance rate</div><div class="kpi-value" style="color:${rc}">${rate}%</div></div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="sl">Contractor structure</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--border);border-radius:var(--rads);overflow:hidden">
+        <div style="padding:14px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)">
+          ${sectionHead('LTD', 'var(--pink)')}
+          ${statRows(hs.ltd)}
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          ${sectionHead('Umbrella', 'var(--pink)')}
+          ${statRows(hs.umbrella)}
+        </div>
+        <div style="padding:14px 16px;grid-column:1/-1">
+          ${sectionHead('Client Determination (Inside / Outside / N/A)', 'var(--yellow)')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            ${statRows(hs.client_det)}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sl">Compliant / Non Compliant</div>
+      <div class="stat-row"><div class="stat-dot" style="background:var(--green)"></div><span class="stat-label">Compliant</span><span class="stat-n">${hs.compliant}</span><span class="stat-p">${rate}%</span><div class="stat-bar"><div class="bar-track"><div class="bar-fill" style="width:${rate}%;background:var(--green)"></div></div></div></div>
+      <div class="stat-row"><div class="stat-dot" style="background:var(--red)"></div><span class="stat-label">Non Compliant</span><span class="stat-n">${hs.non_compliant}</span><span class="stat-p">0%</span><div class="stat-bar"><div class="bar-track"><div class="bar-fill" style="width:0%;background:var(--red)"></div></div></div></div>
+      <div class="stat-total">Total: ${hs.total}</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <div class="card">
+      <div class="sl">Placement dates</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div>
+          ${sectionHead('Due to Start', 'var(--pink)')}
+          ${statRows(hs.placement_start, true)}
+          <div class="stat-total">Total: ${hs.total}</div>
+        </div>
+        <div style="border-left:1px solid var(--border);padding-left:24px">
+          ${sectionHead('Due to End', 'var(--yellow)')}
+          ${statRows(hs.placement_end, true)}
+          <div class="stat-total">Total: ${hs.total}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:20px">
+    <div class="card">
+      <div class="sl">Signed contracts</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div>
+          ${sectionHead('Signed Contractor Contract', 'var(--pink)')}
+          ${statRows(hs.signed_contractor, true)}
+          <div class="stat-total">Total: ${hs.total}</div>
+        </div>
+        <div style="border-left:1px solid var(--border);padding-left:24px">
+          ${sectionHead('Signed Client Contract Contractor', 'var(--yellow)')}
+          ${statRows(hs.signed_client, true)}
+          <div class="stat-total">Total: ${hs.total}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── CONTRACTORS ───────────────────────────────────────────────────────────────
+function gf(){return LIVE.filter(r=>{
+  const ms=!SQ||r.name.toLowerCase().includes(SQ)||(r.co||'').toLowerCase().includes(SQ)||(r.con||'').toLowerCase().includes(SQ);
+  const mst=FS==='all'||(FS==='compliant'&&r.ok==='Compliant')||(FS==='non-compliant'&&r.ok==='Non-Compliant');
+  return ms&&mst&&(FC==='all'||r.con===FC);});}
+function getCons(){return[...new Set(LIVE.map(r=>r.con).filter(Boolean))].sort();}
+function rc2(){
+  const f=gf();const co=getCons().map(c=>`<option value="${c}"${FC===c?' selected':''}>${c}</option>`).join('');
+  let rows='';
+  f.forEach(r=>{const ex=EX===r.id;
+    rows+=`<tr class="cr${ex?' ex':''}" onclick="tr2('${(r.id||'').replace(/'/g,"\'")}')">
+      <td><div class="nm">${r.name}</div>${r.jt?`<div class="ns">${r.jt}</div>`:''}</td>
+      <td class="tm ts">${r.co||'—'}</td><td class="tm ts">${r.con||'—'}</td>
+      <td><span class="badge b-gray">${ct(r)}</span></td><td class="ts tm">${r.cd||'—'}</td>
+      <td style="text-align:center">${bh(r.ok)}</td><td style="text-align:center">${ex?'▲':'▼'}</td></tr>`;
+    if(ex){rows+=`<tr class="xr"><td colspan="7"><div class="xc" style="grid-template-columns:repeat(4,1fr)">
+      <div><div class="xl2">Signed contractor</div><div class="xv2">${r.sc||'—'}</div></div>
+      <div><div class="xl2">Signed client</div><div class="xv2">${r.scl||'—'}</div></div>
+      <div><div class="xl2">Right to work</div>${ih(r.rtw&&r.rtw.includes('days')?'Valid':r.rtw||'')}</div>
+      <div><div class="xl2">SDS IR35 Report</div>${ih(r.sds)}</div>
+      <div><div class="xl2">HMRC CEST Tool</div>${ih(r.hmrc)}</div>
+      <div><div class="xl2">Employers liability</div>${ih(r.eli)}</div>
+      <div><div class="xl2">Prof. indemnity</div>${ih(r.pii)}</div>
+      <div><div class="xl2">Public liability</div>${ih(r.pli)}</div>
+      ${r.note?`<div class="xn" style="grid-column:1/-1">ℹ ${r.note}</div>`:''}
+    </div></td></tr>`;}});
+  return`<div class="fl"><input type="text" placeholder="Search name, client, consultant…" value="${SQ}" oninput="os(this.value)">
+    <select onchange="of(this.value)"><option value="all">All statuses</option><option value="compliant"${FS==='compliant'?' selected':''}>Compliant</option><option value="non-compliant"${FS==='non-compliant'?' selected':''}>Non-compliant</option></select>
+    <select onchange="ofc(this.value)"><option value="all">All consultants</option>${co}</select>
+    <span class="rc">${f.length} results</span></div>
+  <div class="tw"><table><thead><tr><th style="width:22%">Contractor</th><th style="width:20%">Client</th><th style="width:13%">Consultant</th><th style="width:10%">Type</th><th style="width:12%">IR35</th><th style="width:13%;text-align:center">Status</th><th style="width:5%"></th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="7" class="empty">No results</td></tr>`}</tbody></table></div>`;}
+
+// ── FINISHERS ─────────────────────────────────────────────────────────────────
+function getFF(){return LIVE_FIN.filter(r=>{
+  const ms=!FSQ||(r.name||'').toLowerCase().includes(FSQ)||(r.co||'').toLowerCase().includes(FSQ)||(r.con||'').toLowerCase().includes(FSQ);
+  const urg=finUrgency(r);
+  const mst=FFS==='all'||(FFS==='issues'&&urg!=='row-green')||(FFS==='clean'&&urg==='row-green')
+    ||(FFS==='hold'&&(r.hold||'').toLowerCase()==='yes')||(FFS==='nc'&&(r.ok||'').toLowerCase().includes('non'));
+  return ms&&mst&&(FFC==='all'||r.con===FFC);});}
+function getFC(){return[...new Set(LIVE_FIN.map(r=>r.con).filter(Boolean))].sort();}
+function rf(){
+  const fin=LIVE_FIN;const total=fin.length;
+  const needsAction=fin.filter(r=>finUrgency(r)==='row-red').length;
+  const warns=fin.filter(r=>finUrgency(r)==='row-amber').length;
+  const clean=fin.filter(r=>finUrgency(r)==='row-green').length;
+  const onHold=fin.filter(r=>(r.hold||'').toLowerCase()==='yes').length;
+  const eExp=fin.filter(r=>(r.eli||'').toLowerCase().includes('expired')).length;
+  const pExp=fin.filter(r=>(r.pii||'').toLowerCase().includes('expired')).length;
+  const lExp=fin.filter(r=>(r.pli||'').toLowerCase().includes('expired')).length;
+  const filtered=getFF();
+  const fco=getFC().map(c=>`<option value="${c}"${FFC===c?' selected':''}>${c}</option>`).join('');
+  let rows='';
+  filtered.forEach(r=>{const ex=FEX===(r.id+r.name);const urg=finUrgency(r);
+    rows+=`<tr class="cr ${urg}${ex?' ex':''}" onclick="ftr('${(r.id+r.name).replace(/['"]/g,'_')}')">
+      <td><div class="nm">${r.name}</div><div class="ns">#${r.id||'—'}${r.end?' · '+r.end:''}</div></td>
+      <td class="tm ts">${r.co||'—'}</td><td class="tm ts">${r.con||'—'}</td>
+      <td>${finIssues(r)}</td>
+      <td style="text-align:center">${bh(r.ok)}</td>
+      <td style="text-align:center">${(r.hold||'').toLowerCase()==='yes'?'<span class="badge b-pink">⏸ Hold</span>':'<span style="color:var(--text3);font-size:11px">—</span>'}</td>
+      <td style="text-align:center">${ex?'▲':'▼'}</td></tr>`;
+    if(ex){rows+=`<tr class="xr"><td colspan="7"><div class="xc">
+      <div><div class="xl2">Signed contractor</div><div class="xv2">${r.sc||'—'}</div></div>
+      <div><div class="xl2">Signed client</div><div class="xv2">${r.scl||'—'}</div></div>
+      <div><div class="xl2">Right to work</div>${ih(r.rtw)}</div>
+      <div><div class="xl2">Employers liability</div>${ih(r.eli)}</div>
+      <div><div class="xl2">Prof. indemnity</div>${ih(r.pii)}</div>
+      <div><div class="xl2">Public liability</div>${ih(r.pli)}</div>
+      ${r.note&&r.note.toLowerCase()!=='compliant'?`<div class="xn">ℹ ${r.note}</div>`:''}
+    </div></td></tr>`;}});
+  return`
+  <div class="g4">
+    <div class="kpi kpi-pink"><div class="kpi-label">Total finishers</div><div class="kpi-value" style="color:var(--pink)">${total}</div></div>
+    <div class="kpi kpi-red"><div class="kpi-label">Needs action</div><div class="kpi-value" style="color:var(--red)">${needsAction}</div><div class="kpi-sub">expired or missing docs</div></div>
+    <div class="kpi kpi-yellow"><div class="kpi-label">Warnings</div><div class="kpi-value" style="color:var(--amber)">${warns}</div><div class="kpi-sub">expiring soon</div></div>
+    <div class="kpi kpi-green"><div class="kpi-label">Clean</div><div class="kpi-value" style="color:var(--green)">${clean}</div></div>
+  </div>
+  <div class="g3" style="margin-bottom:20px">
+    <div class="card" style="display:flex;align-items:center;gap:14px"><div style="font-size:30px;font-weight:700;color:var(--red)">${eExp}</div><div><div style="font-size:12px;font-weight:600">ELI Expired</div><div style="font-size:11px;color:var(--text3)">Employers liability</div></div></div>
+    <div class="card" style="display:flex;align-items:center;gap:14px"><div style="font-size:30px;font-weight:700;color:var(--red)">${pExp}</div><div><div style="font-size:12px;font-weight:600">PII Expired</div><div style="font-size:11px;color:var(--text3)">Professional indemnity</div></div></div>
+    <div class="card" style="display:flex;align-items:center;gap:14px"><div style="font-size:30px;font-weight:700;color:var(--red)">${lExp}</div><div><div style="font-size:12px;font-weight:600">PLI Expired</div><div style="font-size:11px;color:var(--text3)">Public liability</div></div></div>
+  </div>
+  <div class="fl"><input type="text" placeholder="Search finisher name, client, consultant…" value="${FSQ}" oninput="fos(this.value)">
+    <select onchange="ffcf(this.value)"><option value="all">All consultants</option>${fco}</select>
+    <span class="rc">${filtered.length} of ${total}</span></div>
+  <div class="qf-wrap">
+    <button class="qf${FFS==='all'?' active':''}" onclick="ffs('all')">All (${total})</button>
+    <button class="qf${FFS==='issues'?' active':''}" onclick="ffs('issues')">⚠ Needs action (${needsAction+warns})</button>
+    <button class="qf${FFS==='nc'?' active':''}" onclick="ffs('nc')">✗ Non-compliant (${fin.filter(r=>(r.ok||'').toLowerCase().includes('non')).length})</button>
+    <button class="qf${FFS==='hold'?' active':''}" onclick="ffs('hold')">⏸ Hold comms (${onHold})</button>
+    <button class="qf${FFS==='clean'?' active':''}" onclick="ffs('clean')">✓ Clean (${clean})</button>
+  </div>
+  <div class="tw"><table><thead><tr>
+    <th style="width:22%">Contractor</th><th style="width:20%">Client</th><th style="width:13%">Consultant</th>
+    <th style="width:18%">Issues</th><th style="width:12%;text-align:center">Status</th>
+    <th style="width:9%;text-align:center">Hold Comms</th><th style="width:5%"></th>
+  </tr></thead><tbody>${rows||`<tr><td colspan="7" class="empty">No finishers match filters</td></tr>`}</tbody></table></div>
+  <div style="display:flex;gap:20px;margin-top:12px;font-size:11px;color:var(--text3)">
+    <span>🔴 Needs action / Non-compliant</span><span>🟡 Expiring soon</span><span>🟢 Clean</span>
+  </div>`;}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+function rh(){return`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <p style="font-size:13px;color:var(--text2)">Each upload is saved here. Click an entry to switch datasets.</p>
+    <button class="upload-btn" onclick="openUpload()" style="font-size:12px;padding:7px 16px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload File
+    </button></div>
+  <div class="card" style="padding:0">
+    ${UH.map(u=>`<div class="hi${AU===u.id?' act':''}" onclick="su(${u.id})">
+      <div class="hico">📊</div>
+      <div class="hin"><div class="hnm">${u.name}</div><div class="hmt">Uploaded ${u.date} · ${u.count} contractors${u.fin?' · '+u.fin.length+' finishers':''}</div></div>
+      <div class="hbd"><span class="badge b-green">${u.compliant} compliant</span>${u.nonCompliant>0?`<span class="badge b-red">${u.nonCompliant} non-compliant</span>`:''} ${AU===u.id?'<span class="badge b-pink">Active</span>':''}</div>
+    </div>`).join('')}
+  </div>
+  <div class="ib">ℹ Upload history lives in memory for this session. Deploy to Vercel for persistence across sessions.</div>`;}
+
+// ── routing ───────────────────────────────────────────────────────────────────
+function sw(name,btn){AT=name;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');rt();}
+function rt(){['o','c','f','h'].forEach(t=>{document.getElementById('t'+t).style.display=AT===t?'block':'none';});
+  if(AT==='o')document.getElementById('to').innerHTML=ro();
+  if(AT==='c')document.getElementById('tc').innerHTML=rc2();
+  if(AT==='f')document.getElementById('tf').innerHTML=rf();
+  if(AT==='h')document.getElementById('th').innerHTML=rh();}
+function tr2(id){EX=EX===id?null:id;document.getElementById('tc').innerHTML=rc2();}
+function os(v){SQ=v.toLowerCase();EX=null;document.getElementById('tc').innerHTML=rc2();}
+function of(v){FS=v;EX=null;document.getElementById('tc').innerHTML=rc2();}
+function ofc(v){FC=v;EX=null;document.getElementById('tc').innerHTML=rc2();}
+function ftr(id){FEX=FEX===id?null:id;document.getElementById('tf').innerHTML=rf();}
+function fos(v){FSQ=v.toLowerCase();FEX=null;document.getElementById('tf').innerHTML=rf();}
+function ffs(v){FFS=v;FEX=null;document.getElementById('tf').innerHTML=rf();}
+function ffcf(v){FFC=v;FEX=null;document.getElementById('tf').innerHTML=rf();}
+function su(id){AU=id;const e=UH.find(u=>u.id===id);if(e){if(e.hs){LIVE_HS=e.hs;}if(e.fin){LIVE_FIN=e.fin;}}document.getElementById('th').innerHTML=rh();showToast('Switched to: '+e.name);}
+rt();
+</script>
+</body>
+</html>
